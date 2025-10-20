@@ -1,0 +1,78 @@
+# --- Archivos de Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Entornos virtuales ---
+venv/
+env/
+.venv/
+ENV/
+env.bak/
+
+# --- Archivos de dependencias ---
+*.log
+pip-log.txt
+pip-delete-this-directory.txt
+
+# --- Archivos de configuración y compilación ---
+*.manifest
+*.spec
+*.lock
+*.cfg
+*.ini
+
+# --- Archivos de IDEs ---
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# --- Archivos del sistema ---
+.DS_Store
+Thumbs.db
+
+# --- Distribución / paquetes ---
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+
+# --- Datos temporales ---
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+
+# --- Archivos de pruebas ---
+.coverage
+.tox/
+.nox/
+.pytest_cache/
+htmlcov/
+.cache/
+nosetests.xml
+coverage.xml
+
+# --- Archivos de Jupyter Notebooks ---
+.ipynb_checkpoints
+
+# --- Archivos de Docker ---
+*.pid
+docker-compose.override.yml
+
+# --- Archivos de entorno ---
+.env
+.env.*
+.venv
+.envrc
