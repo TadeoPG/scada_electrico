@@ -2168,6 +2168,21 @@ class AdminDashboard:
         )
         search_btn.pack(side="left", padx=(0, 10))
 
+        # Botón para generar reporte Excel del historial mostrado
+        reporte_btn = tk.Button(
+            filter_frame,
+            text="💾 Generar Reporte Excel",
+            font=("Arial", 11, "bold"),
+            bg="#38bdf8",
+            fg="#0f172a",
+            relief="flat",
+            cursor="hand2",
+            padx=15,
+            pady=6,
+            command=self.generar_reporte_historial,
+        )
+        reporte_btn.pack(side="left", padx=(15, 0))
+
         # Resultados
         results_frame = tk.Frame(main_frame, bg="#0f172a")
         results_frame.pack(fill="both", expand=True, pady=(0, 20))
@@ -2636,9 +2651,7 @@ class AdminDashboard:
 
         total_registros = len(datos)
 
-        # Calcular algunas estadísticas básicas según el parámetro
         if self.selected_parameter == "Potencia":
-            # Extraer valores numéricos de potencia total
             valores = []
             for fila in datos:
                 for valor in fila:
@@ -2656,6 +2669,155 @@ class AdminDashboard:
                 )
 
         self.record_count_label.config(text=f"{total_registros} registros encontrados")
+
+    def generar_reporte_historial(self):
+        """Generar y guardar reporte Excel del historial actual con formato profesional y logo"""
+        try:
+            from openpyxl import Workbook
+            from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+            from openpyxl.utils import get_column_letter
+            from openpyxl.drawing.image import Image
+            from openpyxl.worksheet.page import PageMargins
+            import os
+
+            # Obtener datos actuales mostrados
+            datos = []
+            for _, record in getattr(self, "table_rows", []):
+                datos.append(record)
+
+            if not datos:
+                messagebox.showwarning("Advertencia", "No hay datos para exportar.")
+                return
+
+            headers = self.get_headers_for_parameter()
+
+            # Diálogo para guardar
+            file_path = filedialog.asksaveasfilename(
+                defaultextension=".xlsx",
+                filetypes=[("Excel files", "*.xlsx")],
+                title="Guardar Reporte de Historial",
+                initialfile=f"Historial_{self.selected_parameter}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+            )
+            if not file_path:
+                return
+
+            # Crear libro
+            wb = Workbook()
+            ws = wb.active
+            ws.title = "Historial de Mediciones"
+
+            # Márgenes de página más amplios
+            ws.page_margins = PageMargins(left=0.4, right=0.4, top=0.5, bottom=0.5)
+
+            # ===========================
+            #  ENCABEZADO CON LOGO Y TÍTULO
+            # ===========================
+            logo_path = os.path.join("assets", "logo.jpg")
+            if os.path.exists(logo_path):
+                img = Image(logo_path)
+                img.height = 80
+                img.width = 100
+                ws.add_image(img, "A1")
+
+            # Título general
+            ws.merge_cells("B1:{}2".format(get_column_letter(len(headers))))
+            titulo_cell = ws["B1"]
+            titulo_cell.value = f"Reporte de {self.selected_parameter}"
+            titulo_cell.font = Font(bold=True, size=16, color="FFFFFF")
+            titulo_cell.alignment = Alignment(horizontal="center", vertical="center")
+            titulo_cell.fill = PatternFill(
+                start_color="1E40AF", end_color="1E3A8A", fill_type="solid"
+            )
+            ws.row_dimensions[1].height = 30
+
+            # Subtítulo con fecha
+            ws.merge_cells("B3:{}3".format(get_column_letter(len(headers))))
+            ws["B3"].value = (
+                f"Generado el {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}"
+            )
+            ws["B3"].alignment = Alignment(horizontal="center", vertical="center")
+            ws["B3"].font = Font(italic=True, color="4B5563")
+
+            # ===========================
+            #  ENCABEZADOS DE TABLA
+            # ===========================
+            header_row = 5
+            header_fill = PatternFill(
+                start_color="0F172A", end_color="0F172A", fill_type="solid"
+            )
+            header_font = Font(bold=True, color="FFFFFF")
+            thin_border = Border(
+                left=Side(style="thin"),
+                right=Side(style="thin"),
+                top=Side(style="thin"),
+                bottom=Side(style="thin"),
+            )
+
+            for col_num, header in enumerate(headers, 1):
+                cell = ws.cell(row=header_row, column=col_num, value=header)
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.border = thin_border
+                cell.alignment = Alignment(horizontal="center", vertical="center")
+
+            # ===========================
+            #  DATOS CON FORMATO ZEBRA
+            # ===========================
+            even_fill = PatternFill(
+                start_color="F8FAFC", end_color="F8FAFC", fill_type="solid"
+            )
+            odd_fill = PatternFill(
+                start_color="E2E8F0", end_color="E2E8F0", fill_type="solid"
+            )
+
+            start_row = header_row + 1
+            for row_num, row_data in enumerate(datos, start=start_row):
+                for col_num, value in enumerate(row_data, 1):
+                    cell = ws.cell(row=row_num, column=col_num, value=value)
+                    cell.alignment = Alignment(horizontal="center", vertical="center")
+                    cell.border = thin_border
+                    # Fondo alternado
+                    cell.fill = even_fill if row_num % 2 == 0 else odd_fill
+
+            # ===========================
+            #  AUTOAJUSTE DE COLUMNAS
+            # ===========================
+            for col_num in range(1, len(headers) + 1):
+                col_letter = get_column_letter(col_num)
+                max_length = max(
+                    (len(str(cell.value)) if cell.value else 0)
+                    for cell in ws[col_letter]
+                )
+                ws.column_dimensions[col_letter].width = max(max_length + 3, 14)
+
+            # ===========================
+            #  PIE DE FIRMA
+            # ===========================
+            footer_row = ws.max_row + 2
+            ws.merge_cells(
+                f"A{footer_row}:{get_column_letter(len(headers))}{footer_row}"
+            )
+            ws[f"A{footer_row}"].value = (
+                "Sistema SCADA Eléctrico © 2025 - Todos los derechos reservados"
+            )
+            ws[f"A{footer_row}"].alignment = Alignment(
+                horizontal="center", vertical="center"
+            )
+            ws[f"A{footer_row}"].font = Font(italic=True, size=10, color="6B7280")
+
+            # ===========================
+            #  GUARDAR ARCHIVO
+            # ===========================
+            wb.save(file_path)
+            messagebox.showinfo(
+                "Éxito",
+                f"✅ Reporte profesional generado correctamente.\n\nArchivo: {file_path}",
+            )
+
+        except Exception as e:
+            messagebox.showerror(
+                "Error", f"Ocurrió un error al generar el reporte:\n{str(e)}"
+            )
 
     def clear_content(self):
         """Limpiar el contenido actual"""
